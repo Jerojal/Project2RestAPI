@@ -28,7 +28,7 @@ const Song = mongoose.model(
     },
     "songs"
 )
-// Print the songs
+// Print the song
 app.get("/api/songs", function (req, res) {
     async function findSong() {
         try {
