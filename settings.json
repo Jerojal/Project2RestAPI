@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/cb53bf72-cce1-4fa6-ab5c-b1fe2f660234/resourceGroups/appsvc_linux_centralus/providers/Microsoft.Web/sites/ProjectGuestbook1JerOjal",
+    "appService.deploySubpath": "",
+}
