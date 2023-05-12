@@ -1,85 +1,123 @@
 // Use express-module
 var express = require("express");
-var cors = require('cors')
 var app = express();
-app.use(cors())
 
 // This for the templates
 var bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Mongoose module
-var mongoose = require("mongoose");
+// Mongo db module
+const MongoClient = require("mongodb").MongoClient;
 
+/* Let's take env parameters in use */
+require("dotenv").config();
+
+// Set userid and pw. 
+var user = process.env.MONGO_USERID
+var pw = process.env.MONGO_PW
 
 // Create connection script to db
-const uri = "mongodb+srv://JerOjal:DsNLCSqCN5s0Ei0m@cluster0.sz7hujc.mongodb.net/songs?retryWrites=true&w=majority";
 
-// Make connection to database
-mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+const uri = "mongodb+srv://" + user + ":" + pw + "@cluster0.ut6rylp.mongodb.net/?retryWrites=true&w=majority";
 
-// Make schema to your data model
-const Song = mongoose.model(
-    "Song",
-    {
-        title: String,
-        year: Number,
-        artist: String,
-    },
-    "songs"
-)
-// Print the song
-app.get("/api/songs", function (req, res) {
-    async function findSong() {
+// Make the routes
+
+// Print the movies
+app.get("/api/getall", function (req, res) {
+    // Create connection object
+    const client = new MongoClient(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    });
+
+    //res.send("Printout the movies.");
+
+    async function connectAndFetch() {
         try {
-            var results = await Song.find({}, null, { limit: 20 });
+            // Take connection to "sample_mflix" and collection "movies"
+            //var data = "";
+            await client.connect();
+            const collection = client.db("sample_mflix").collection("movies");
 
-            console.log(results);
-            res.status(200).json(results);
+            // make query with collection-object
+            var result = await collection
+                .find() // Use empty find to show all contents
+                .limit(10)
+                .toArray()
+
+            res.send(result);
+
         } catch (e) {
             console.error(e);
         } finally {
-            //await Song.;
-            //mongoose.connection.close();
-            console.log("Request done!");
+            await client.close();
+            console.log("Connection closed to MONGO");
         }
+    }
+    connectAndFetch();
 
-    };
-    findSong();
 });
+const { ObjectId } = require("mongodb");
 
-
-// Add one song - see how to read the POST parameters
-app.post("/api/add", function (req, res) {
-    console.log("Add song");
-    res.send("Add song: " + req.body.artist + req.body.title + " (" + req.body.year + ")");
-});
-
-// Modify the information of song by ID number.See how to read the ID
-app.put("/api/modify/:id", function (req, res) {
-    console.log("Modify song by " + req.params.id);
-    res.send("Modify song by " + req.params.id);
-});
-
-// Remove song by ID. See how to read the ID
-app.delete("/api/remove/:id", function (req, res) {
-    // Take the id for the delete operation
-    var id = req.params.id;
-
-    Song.findByIdAndDelete(id, function (err, results) {
-        // Database error handling 
-        if (err) {
-            console.log(err);
-            res.status(500).json("Fault in delete operation.");
-        } // Tietokanta ok, but object cannot be found
-        else if (results == null) {
-            res.status(200).json("Cannot be deleted as object cannot be found.");
-        } // Successful delete operation
-        else {
-            console.log(results);
-            res.status(200).json("Deleted " + id + " " + results.title);
-        }
+// Works when using id: in the following way: http://localhost:8080/api/573a1390f29313caabcd4323
+app.get("/api/:id", function (req, res) {
+    const client = new MongoClient(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
     });
+
+    async function connectAndFetchOne() {
+        try {
+            await client.connect();
+            const collection = client.db("sample_mflix").collection("movies");
+
+            // Retrieve the id from the request parameters
+            const id = req.params.id;
+
+            // Check if the id is in a valid format
+            if (!ObjectId.isValid(id)) {
+                res.status(400).send("Invalid ID");
+                return;
+            }
+
+            // Convert the id string to ObjectId
+            const objectId = new ObjectId(id);
+
+            // Update the query to find the document with the specified ObjectId
+            var result = await collection.findOne({ _id: objectId });
+
+            if (!result) {
+                res.status(404).send("Document not found");
+            } else {
+                res.send(result);
+            }
+        } catch (e) {
+            console.error(e);
+            res.status(500).send("Internal Server Error");
+        } finally {
+            await client.close();
+            console.log("Connection closed to MONGO");
+        }
+    }
+
+    connectAndFetchOne();
+});
+
+
+// Add one movie
+app.post("/api/add", function (req, res) {
+
+    res.send("Add movie: " + req.body.title + " (" + req.body.year + ")");
+});
+
+// Modify the information of movie by ID number.
+app.put("/api/update/:id", function (req, res) {
+    res.send("Modify movie by " + req.params.id);
+});
+
+// Remove movie by ID. 
+app.delete("/api/remove/:id", function (req, res) {
+    res.send("Remove the movie by " + req.params.id);
 });
 
 // Web server by express
