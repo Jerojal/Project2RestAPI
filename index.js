@@ -106,19 +106,138 @@ app.get("/api/:id", function (req, res) {
 
 // Add one movie
 app.post("/api/add", function (req, res) {
+    // Create connection object
+    const client = new MongoClient(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    });
 
-    res.send("Add movie: " + req.body.title + " (" + req.body.year + ")");
+    async function connectAndInsert() {
+        try {
+            await client.connect();
+            const collection = client.db("sample_mflix").collection("movies");
+
+            // Create a new movie object from the request body
+            const newMovie = {
+                title: req.body.title,
+                year: req.body.year
+            };
+
+            // Insert the new movie into the collection
+            const result = await collection.insertOne(newMovie);
+
+            res.send("Movie added successfully");
+        } catch (e) {
+            console.error(e);
+            res.status(500).send("Internal Server Error");
+        } finally {
+            await client.close();
+            console.log("Connection closed to MongoDB");
+        }
+    }
+
+    connectAndInsert();
 });
 
-// Modify the information of movie by ID number.
+
+// Modify the information of a movie by ID number.
 app.put("/api/update/:id", function (req, res) {
-    res.send("Modify movie by " + req.params.id);
+    // Create connection object
+    const client = new MongoClient(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    });
+
+    async function connectAndUpdate() {
+        try {
+            await client.connect();
+            const collection = client.db("sample_mflix").collection("movies");
+
+            // Retrieve the id from the request parameters
+            const id = req.params.id;
+
+            // Check if the id is in a valid format
+            if (!ObjectId.isValid(id)) {
+                res.status(400).send("Invalid ID");
+                return;
+            }
+
+            // Convert the id string to ObjectId
+            const objectId = new ObjectId(id);
+
+            // Create an update object with the desired changes
+            const updateObject = {
+                $set: {
+                    title: req.body.title,
+                    year: req.body.year
+                }
+            };
+
+            // Update the document with the specified ObjectId
+            const result = await collection.updateOne({ _id: objectId }, updateObject);
+
+            if (result.matchedCount === 0) {
+                res.status(404).send("Document not found");
+            } else {
+                res.send("Movie updated successfully");
+            }
+        } catch (e) {
+            console.error(e);
+            res.status(500).send("Internal Server Error");
+        } finally {
+            await client.close();
+            console.log("Connection closed to MongoDB");
+        }
+    }
+
+    connectAndUpdate();
 });
 
-// Remove movie by ID. 
+// Remove movie by ID.
 app.delete("/api/remove/:id", function (req, res) {
-    res.send("Remove the movie by " + req.params.id);
+    // Create connection object
+    const client = new MongoClient(uri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    });
+
+    async function connectAndDelete() {
+        try {
+            await client.connect();
+            const collection = client.db("sample_mflix").collection("movies");
+
+            // Retrieve the id from the request parameters
+            const id = req.params.id;
+
+            // Check if the id is in a valid format
+            if (!ObjectId.isValid(id)) {
+                res.status(400).send("Invalid ID");
+                return;
+            }
+
+            // Convert the id string to ObjectId
+            const objectId = new ObjectId(id);
+
+            // Delete the document with the specified ObjectId
+            const result = await collection.deleteOne({ _id: objectId });
+
+            if (result.deletedCount === 0) {
+                res.status(404).send("Document not found");
+            } else {
+                res.send("Movie deleted successfully");
+            }
+        } catch (e) {
+            console.error(e);
+            res.status(500).send("Internal Server Error");
+        } finally {
+            await client.close();
+            console.log("Connection closed to MongoDB");
+        }
+    }
+
+    connectAndDelete();
 });
+
 
 // Web server by express
 var PORT = process.env.PORT || 8080;
